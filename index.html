@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SplitWise Clone</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8f9fa;
+        }
+        /* Custom scrollbar for better aesthetics */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        /* Style for file input */
+        .file-input-button {
+            background-color: #4f46e5;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .file-input-button:hover {
+            background-color: #4338ca;
+        }
+        /* Simple transition for modals */
+        .modal {
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        .modal.hidden {
+            transform: scale(0.95);
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+    <div id="app" class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="w-64 bg-white border-r border-gray-200 flex-shrink-0 flex flex-col p-4 transition-transform duration-300 ease-in-out -translate-x-full md:translate-x-0 md:relative z-20">
+            <h1 class="text-2xl font-bold text-indigo-600 mb-6">Splitz</h1>
+            
+            <button id="add-expense-btn-sidebar" class="w-full bg-orange-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-orange-600 transition mb-6">Add an expense</button>
+
+            <nav class="flex-grow overflow-y-auto">
+                <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Friends</h2>
+                <ul id="friends-list" class="mb-6">
+                    <!-- Friends will be dynamically inserted here -->
+                </ul>
+                <button id="add-friend-btn" class="text-sm text-indigo-600 hover:text-indigo-800 font-medium mb-6"><i class="fas fa-user-plus mr-2"></i>Add Friend</button>
+
+                <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Data Management</h2>
+                 <div class="space-y-2">
+                    <button id="export-btn" class="w-full text-sm flex items-center justify-center bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-lg hover:bg-gray-300 transition"><i class="fas fa-file-export mr-2"></i>Export Data</button>
+                    <button id="import-btn" class="w-full text-sm flex items-center justify-center bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-lg hover:bg-gray-300 transition"><i class="fas fa-file-import mr-2"></i>Import Data</button>
+                    <input type="file" id="import-file-input" class="hidden" accept=".json">
+                </div>
+            </nav>
+
+            <div class="text-xs text-gray-400 mt-4">
+                <p>&copy; 2024 Splitz Clone</p>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 flex flex-col overflow-hidden">
+            <header class="bg-white border-b border-gray-200 flex items-center justify-between p-4 flex-shrink-0">
+                 <button id="menu-toggle" class="md:hidden text-gray-600 focus:outline-none z-30">
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
+                <h2 id="main-header" class="text-xl font-semibold">Dashboard</h2>
+                <button id="add-expense-btn-header" class="bg-orange-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-orange-600 transition hidden sm:block">Add an expense</button>
+            </header>
+
+            <div class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-4 sm:p-6">
+                <div id="dashboard-view">
+                    <h3 class="text-lg font-semibold mb-4">Overall Balances</h3>
+                    <div id="overall-balances" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <!-- Balance cards will be dynamically inserted here -->
+                    </div>
+                     <h3 class="text-lg font-semibold mt-8 mb-4">Simplified Debts</h3>
+                    <div id="simplified-debts" class="bg-white p-4 rounded-lg shadow-sm">
+                        <!-- Simplified debt list will be inserted here -->
+                    </div>
+                </div>
+
+                <div id="friend-view" class="hidden">
+                    <div id="expense-list-container">
+                        <!-- Expenses for a friend will be listed here -->
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Add Friend Modal -->
+    <div id="add-friend-modal" class="modal fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center p-4 hidden opacity-0 z-40">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+            <h3 class="text-xl font-semibold mb-4">Add a New Friend</h3>
+            <form id="add-friend-form">
+                <div class="mb-4">
+                    <label for="friend-name" class="block text-sm font-medium text-gray-700 mb-1">Friend's Name</label>
+                    <input type="text" id="friend-name" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
+                </div>
+                <div class="flex justify-end gap-3">
+                    <button type="button" class="modal-cancel-btn px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Add Friend</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Add Expense Modal -->
+    <div id="add-expense-modal" class="modal fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center p-4 hidden opacity-0 z-40">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl p-6 transform transition-all max-h-screen overflow-y-auto">
+            <form id="add-expense-form">
+                <h3 class="text-2xl font-semibold mb-6">Add an Expense</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="expense-description" class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                        <input type="text" id="expense-description" class="w-full border-gray-300 rounded-lg shadow-sm" placeholder="e.g., Dinner" required>
+                    </div>
+                    <div>
+                        <label for="expense-amount" class="block text-sm font-medium text-gray-700 mb-1">Amount</label>
+                         <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500">₹</span>
+                            <input type="number" id="expense-amount" min="0.01" step="0.01" class="w-full border-gray-300 rounded-lg shadow-sm pl-7" placeholder="0.00" required>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Paid by</label>
+                    <div class="flex items-center gap-4">
+                        <select id="expense-paid-by" class="w-full border-gray-300 rounded-lg shadow-sm"></select>
+                        <span class="text-gray-600">and split between</span>
+                    </div>
+                </div>
+
+                <div class="mt-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Split Method</label>
+                    <select id="expense-split-method" class="w-full border-gray-300 rounded-lg shadow-sm">
+                        <option value="equally">Equally</option>
+                        <option value="unequally">Unequally</option>
+                        <option value="percentages">By Percentages</option>
+                        <option value="shares">By Shares</option>
+                    </select>
+                </div>
+
+                <div id="split-details-container" class="mt-4 bg-gray-50 p-4 rounded-lg">
+                    <!-- Dynamic inputs for split details here -->
+                </div>
+
+                <div class="flex justify-end gap-3 mt-8">
+                    <button type="button" class="modal-cancel-btn px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">Cancel</button>
+                    <button type="submit" class="px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 font-semibold">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Settle Up Modal -->
+    <div id="settle-up-modal" class="modal fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center p-4 hidden opacity-0 z-40">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+            <h3 class="text-xl font-semibold mb-4">Settle Up</h3>
+            <form id="settle-up-form">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">From</label>
+                    <select id="settle-from" class="w-full border-gray-300 rounded-lg shadow-sm"></select>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">To</label>
+                    <select id="settle-to" class="w-full border-gray-300 rounded-lg shadow-sm"></select>
+                </div>
+                 <div class="mb-6">
+                    <label for="settle-amount" class="block text-sm font-medium text-gray-700 mb-1">Amount</label>
+                     <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500">₹</span>
+                        <input type="number" id="settle-amount" min="0.01" step="0.01" class="w-full border-gray-300 rounded-lg shadow-sm pl-7" placeholder="0.00" required>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-3">
+                    <button type="button" class="modal-cancel-btn px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">Record Payment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Confirmation Modal -->
+    <div id="confirm-modal" class="modal fixed inset-0 bg-gray-900 bg-opacity-70 flex items-center justify-center p-4 hidden opacity-0 z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-sm p-6 text-center">
+            <i id="confirm-modal-icon" class="fas fa-exclamation-triangle text-4xl text-yellow-500 mb-4"></i>
+            <h3 id="confirm-modal-title" class="text-xl font-semibold mb-2">Are you sure?</h3>
+            <p id="confirm-modal-text" class="text-gray-600 mb-6">This action cannot be undone.</p>
+            <div class="flex justify-center gap-4">
+                <button id="confirm-modal-cancel" class="px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">Cancel</button>
+                <button id="confirm-modal-confirm" class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+
+        // --- STATE MANAGEMENT ---
+        let state = {
+            friends: [],
+            expenses: [],
+            currentView: { type: 'dashboard', id: null } // 'dashboard' or 'friend'
+        };
+
+        // --- DOM ELEMENTS ---
+        const DOMElements = {
+            app: document.getElementById('app'),
+            sidebar: document.getElementById('sidebar'),
+            menuToggle: document.getElementById('menu-toggle'),
+            friendsList: document.getElementById('friends-list'),
+            mainHeader: document.getElementById('main-header'),
+            dashboardView: document.getElementById('dashboard-view'),
+            friendView: document.getElementById('friend-view'),
+            overallBalances: document.getElementById('overall-balances'),
+            simplifiedDebts: document.getElementById('simplified-debts'),
+            expenseListContainer: document.getElementById('expense-list-container'),
+            
+            // Modals
+            addFriendModal: document.getElementById('add-friend-modal'),
+            addExpenseModal: document.getElementById('add-expense-modal'),
+            settleUpModal: document.getElementById('settle-up-modal'),
+            confirmModal: document.getElementById('confirm-modal'),
+
+            // Forms
+            addFriendForm: document.getElementById('add-friend-form'),
+            addExpenseForm: document.getElementById('add-expense-form'),
+            settleUpForm: document.getElementById('settle-up-form'),
+
+            // Buttons
+            addFriendBtn: document.getElementById('add-friend-btn'),
+            addExpenseBtnSidebar: document.getElementById('add-expense-btn-sidebar'),
+            addExpenseBtnHeader: document.getElementById('add-expense-btn-header'),
+            exportBtn: document.getElementById('export-btn'),
+            importBtn: document.getElementById('import-btn'),
+            importFileInput: document.getElementById('import-file-input'),
+
+            // Modal Controls
+            modalCancelBtns: document.querySelectorAll('.modal-cancel-btn'),
+            confirmModalCancel: document.getElementById('confirm-modal-cancel'),
+            confirmModalConfirm: document.getElementById('confirm-modal-confirm'),
+        };
+        
+        // --- LOCAL STORAGE ---
+        const storageKey = 'splitwiseCloneData';
+
+        function saveData() {
+            localStorage.setItem(storageKey, JSON.stringify(state));
+        }
+
+        function loadData() {
+            const data = localStorage.getItem(storageKey);
+            if (data) {
+                state = JSON.parse(data);
+            } else {
+                // Initialize with a default user
+                state = {
+                    friends: [{ id: crypto.randomUUID(), name: 'You', isYou: true }],
+                    expenses: [],
+                    currentView: { type: 'dashboard', id: null }
+                };
+                saveData();
+            }
+        }
+        
+        // --- UTILITY FUNCTIONS ---
+        const findFriend = (id) => state.friends.find(f => f.id === id);
+        const formatCurrency = (amount) => {
+            const absAmount = Math.abs(amount).toFixed(2);
+            return amount < 0 ? `-₹${absAmount}` : `₹${absAmount}`;
+        };
+
+        // --- CONFIRMATION MODAL LOGIC ---
+        let confirmCallback = null;
+        function showConfirmModal({ title, text, confirmText, iconClass, onConfirm }) {
+            document.getElementById('confirm-modal-title').textContent = title;
+            document.getElementById('confirm-modal-text').textContent = text;
+            document.getElementById('confirm-modal-confirm').textContent = confirmText;
+            const icon = document.getElementById('confirm-modal-icon');
+            icon.className = iconClass; // e.g. "fas fa-trash-alt text-4xl text-red-500 mb-4"
+
+            DOMElements.confirmModalConfirm.className = DOMElements.confirmModalConfirm.className.replace(/bg-\w+-\d+/g, `bg-${iconClass.match(/text-(\w+)-/)[1]}-600`);
+            DOMElements.confirmModalConfirm.className = DOMElements.confirmModalConfirm.className.replace(/hover:bg-\w+-\d+/g, `hover:bg-${iconClass.match(/text-(\w+)-/)[1]}-700`);
+
+            confirmCallback = onConfirm;
+            showModal(DOMElements.confirmModal);
+        }
+
+        DOMElements.confirmModalConfirm.addEventListener('click', () => {
+            if (confirmCallback) {
+                confirmCallback();
+                confirmCallback = null;
+            }
+            hideModal(DOMElements.confirmModal);
+        });
+
+        // --- MODAL HANDLING ---
+        function showModal(modal) {
+            modal.classList.remove('hidden');
+            setTimeout(() => modal.classList.remove('opacity-0', 'transform', 'scale-95'), 10);
+        }
+
+        function hideModal(modal) {
+            modal.classList.add('opacity-0', 'transform', 'scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        }
+
+        DOMElements.modalCancelBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                hideModal(btn.closest('.modal'));
+            });
+        });
+        DOMElements.confirmModalCancel.addEventListener('click', () => hideModal(DOMElements.confirmModal));
+
+        // --- RENDER FUNCTIONS ---
+        function renderAll() {
+            renderFriendsList();
+            renderCurrentView();
+        }
+
+        function renderFriendsList() {
+            DOMElements.friendsList.innerHTML = '';
+            const dashboardItem = document.createElement('li');
+            dashboardItem.innerHTML = `<a href="#" data-view-type="dashboard" class="flex items-center p-2 rounded-lg hover:bg-gray-100 font-medium">
+                <i class="fas fa-tachometer-alt w-6 text-center text-gray-500 mr-3"></i> Dashboard</a>`;
+            if (state.currentView.type === 'dashboard') {
+                dashboardItem.querySelector('a').classList.add('bg-indigo-100', 'text-indigo-700');
+            }
+            DOMElements.friendsList.appendChild(dashboardItem);
+
+            state.friends.forEach(friend => {
+                if (friend.isYou) return;
+                const li = document.createElement('li');
+                li.innerHTML = `<a href="#" data-view-type="friend" data-friend-id="${friend.id}" class="flex items-center p-2 rounded-lg hover:bg-gray-100">
+                    <i class="fas fa-user w-6 text-center text-gray-500 mr-3"></i> ${friend.name}</a>`;
+                if (state.currentView.type === 'friend' && state.currentView.id === friend.id) {
+                    li.querySelector('a').classList.add('bg-indigo-100', 'text-indigo-700');
+                }
+                DOMElements.friendsList.appendChild(li);
+            });
+        }
+        
+        function renderCurrentView() {
+            if (state.currentView.type === 'dashboard') {
+                DOMElements.mainHeader.textContent = 'Dashboard';
+                DOMElements.dashboardView.classList.remove('hidden');
+                DOMElements.friendView.classList.add('hidden');
+                renderDashboard();
+            } else if (state.currentView.type === 'friend') {
+                const friend = findFriend(state.currentView.id);
+                DOMElements.mainHeader.textContent = `Expenses with ${friend.name}`;
+                DOMElements.dashboardView.classList.add('hidden');
+                DOMElements.friendView.classList.remove('hidden');
+                renderFriendView(friend.id);
+            }
+        }
+
+        function renderDashboard() {
+            const balances = calculateBalances();
+            renderOverallBalanceCards(balances);
+            renderSimplifiedDebts(balances);
+        }
+
+        function renderFriendView(friendId) {
+            const youId = state.friends.find(f => f.isYou).id;
+            const relevantExpenses = state.expenses.filter(e => 
+                e.participants.includes(friendId) && e.participants.includes(youId)
+            );
+            
+            DOMElements.expenseListContainer.innerHTML = '';
+
+            if (relevantExpenses.length === 0) {
+                 DOMElements.expenseListContainer.innerHTML = `<div class="text-center py-12 bg-white rounded-lg shadow-sm">
+                    <i class="fas fa-receipt text-4xl text-gray-300 mb-4"></i>
+                    <h3 class="text-xl font-semibold text-gray-700">No expenses yet</h3>
+                    <p class="text-gray-500 mt-2">Add an expense with ${findFriend(friendId).name} to get started.</p>
+                </div>`;
+                return;
+            }
+
+            relevantExpenses.sort((a,b) => new Date(b.date) - new Date(a.date)).forEach(expense => {
+                const expenseEl = createExpenseElement(expense, youId);
+                DOMElements.expenseListContainer.appendChild(expenseEl);
+            });
+        }
+
+        function createExpenseElement(expense, currentUserId) {
+            const el = document.createElement('div');
+            el.className = 'bg-white p-4 rounded-lg shadow-sm mb-3 flex items-start';
+            
+            const paidByFriend = findFriend(expense.paidBy);
+            const userShare = expense.split.find(s => s.friendId === currentUserId)?.amount || 0;
+            let shareText = '';
+            
+            if (expense.paidBy === currentUserId) {
+                shareText = `<span class="text-green-600 font-semibold">You lent ${formatCurrency(expense.amount - userShare)}</span>`;
+            } else {
+                if (userShare > 0) {
+                    shareText = `<span class="text-red-600 font-semibold">You borrowed ${formatCurrency(userShare)}</span>`;
+                } else {
+                    shareText = `<span class="text-gray-500">Not involved</span>`;
+                }
+            }
+            
+            el.innerHTML = `
+                <div class="text-sm text-center mr-4 flex-shrink-0 w-14">
+                    <div class="font-bold text-gray-700">${new Date(expense.date).toLocaleString('default', { month: 'short' })}</div>
+                    <div class="text-2xl font-light text-gray-500">${new Date(expense.date).getDate()}</div>
+                </div>
+                <div class="flex-grow">
+                    <p class="font-semibold">${expense.description}</p>
+                    <p class="text-sm text-gray-500">${paidByFriend.name} paid ${formatCurrency(expense.amount)}</p>
+                    <p class="text-sm">${shareText}</p>
+                </div>
+                <button class="delete-expense-btn text-gray-400 hover:text-red-500 transition" data-expense-id="${expense.id}">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            return el;
+        }
+
+        function renderOverallBalanceCards(balances) {
+            DOMElements.overallBalances.innerHTML = '';
+            const you = state.friends.find(f => f.isYou);
+            const youBalance = balances[you.id] || 0;
+            
+            const totalOwedToYou = Object.entries(balances).reduce((acc, [id, bal]) => id !== you.id && bal < 0 ? acc - bal : acc, 0);
+            const totalYouOwe = Object.entries(balances).reduce((acc, [id, bal]) => id !== you.id && bal > 0 ? acc + bal : acc, 0);
+
+            const cardData = [
+                { title: 'You are owed', amount: totalOwedToYou, color: 'green' },
+                { title: 'You owe', amount: totalYouOwe, color: 'red' },
+                { title: 'Total balance', amount: youBalance, color: youBalance >= 0 ? 'blue' : 'red' },
+            ];
+            
+            cardData.forEach(data => {
+                const card = document.createElement('div');
+                card.className = `bg-white p-4 rounded-lg shadow-sm border-l-4 border-${data.color}-500`;
+                card.innerHTML = `
+                    <h4 class="text-sm text-gray-500 font-medium">${data.title}</h4>
+                    <p class="text-2xl font-semibold text-gray-800">${formatCurrency(data.amount)}</p>
+                `;
+                DOMElements.overallBalances.appendChild(card);
+            });
+        }
+        
+        function renderSimplifiedDebts(balances) {
+            const simplified = simplifyDebts(balances);
+            DOMElements.simplifiedDebts.innerHTML = '';
+            if (simplified.length === 0) {
+                DOMElements.simplifiedDebts.innerHTML = `<div class="text-center py-8">
+                    <i class="fas fa-check-circle text-3xl text-green-400 mb-3"></i>
+                    <p class="font-semibold text-gray-700">You are all settled up!</p>
+                </div>`;
+                return;
+            }
+
+            const list = document.createElement('ul');
+            list.className = 'space-y-3';
+            simplified.forEach(({ from, to, amount }) => {
+                const fromFriend = findFriend(from);
+                const toFriend = findFriend(to);
+                const li = document.createElement('li');
+                li.className = 'flex items-center justify-between p-2 rounded-md bg-gray-50';
+                li.innerHTML = `
+                    <div class="flex items-center">
+                        <span class="font-semibold text-gray-800">${fromFriend.name}</span>
+                        <i class="fas fa-arrow-right text-sm text-gray-400 mx-3"></i>
+                        <span class="font-semibold text-gray-800">${toFriend.name}</span>
+                    </div>
+                    <span class="font-bold text-lg text-indigo-600">${formatCurrency(amount)}</span>
+                `;
+                list.appendChild(li);
+            });
+            
+            const settleUpButton = document.createElement('button');
+            settleUpButton.id = 'settle-up-btn';
+            settleUpButton.className = "mt-4 w-full bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition";
+            settleUpButton.innerHTML = `<i class="fas fa-handshake mr-2"></i>Settle Up`;
+            settleUpButton.addEventListener('click', openSettleUpModal);
+
+            DOMElements.simplifiedDebts.appendChild(list);
+            DOMElements.simplifiedDebts.appendChild(settleUpButton);
+        }
+
+        // --- CALCULATION LOGIC ---
+        function calculateBalances() {
+            const balances = {};
+            state.friends.forEach(f => balances[f.id] = 0);
+
+            state.expenses.forEach(expense => {
+                const payerId = expense.paidBy;
+                const totalAmount = expense.amount;
+                
+                // Payer gets credit
+                if(balances[payerId] !== undefined) balances[payerId] += totalAmount;
+
+                // Each participant gets debited
+                expense.split.forEach(split => {
+                    if(balances[split.friendId] !== undefined) balances[split.friendId] -= split.amount;
+                });
+            });
+            return balances;
+        }
+
+        function simplifyDebts(balances) {
+            const debtors = [];
+            const creditors = [];
+
+            Object.entries(balances).forEach(([id, amount]) => {
+                if (amount > 0.005) { // Use a small epsilon for float comparison
+                    creditors.push({ id, amount });
+                } else if (amount < -0.005) {
+                    debtors.push({ id, amount: -amount });
+                }
+            });
+
+            const settlements = [];
+
+            while (debtors.length > 0 && creditors.length > 0) {
+                debtors.sort((a,b) => b.amount - a.amount);
+                creditors.sort((a,b) => b.amount - a.amount);
+
+                const debtor = debtors[0];
+                const creditor = creditors[0];
+                const amount = Math.min(debtor.amount, creditor.amount);
+
+                settlements.push({ from: debtor.id, to: creditor.id, amount });
+
+                debtor.amount -= amount;
+                creditor.amount -= amount;
+
+                if (debtor.amount < 0.005) {
+                    debtors.shift();
+                }
+                if (creditor.amount < 0.005) {
+                    creditors.shift();
+                }
+            }
+            return settlements;
+        }
+
+        // --- EVENT HANDLERS & LOGIC ---
+
+        // View Switching
+        DOMElements.friendsList.addEventListener('click', (e) => {
+            const link = e.target.closest('a');
+            if (!link) return;
+            e.preventDefault();
+            const viewType = link.dataset.viewType;
+            const friendId = link.dataset.friendId || null;
+            state.currentView = { type: viewType, id: friendId };
+            renderAll();
+            // Close sidebar on mobile after selection
+            if(window.innerWidth < 768) {
+                DOMElements.sidebar.classList.add('-translate-x-full');
+            }
+        });
+
+        // Add Friend
+        DOMElements.addFriendBtn.addEventListener('click', () => {
+            DOMElements.addFriendForm.reset();
+            showModal(DOMElements.addFriendModal);
+            document.getElementById('friend-name').focus();
+        });
+
+        DOMElements.addFriendForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const name = document.getElementById('friend-name').value.trim();
+            if (name) {
+                state.friends.push({ id: crypto.randomUUID(), name, isYou: false });
+                saveData();
+                renderFriendsList();
+                hideModal(DOMElements.addFriendModal);
+            }
+        });
+
+        // Add Expense
+        function openAddExpenseModal() {
+            DOMElements.addExpenseForm.reset();
+            
+            // Populate dropdowns
+            const paidBySelect = document.getElementById('expense-paid-by');
+            paidBySelect.innerHTML = '';
+            state.friends.forEach(f => {
+                const option = new Option(f.name, f.id);
+                paidBySelect.appendChild(option);
+            });
+            
+            updateSplitDetails();
+            showModal(DOMElements.addExpenseModal);
+        }
+
+        DOMElements.addExpenseBtnSidebar.addEventListener('click', openAddExpenseModal);
+        DOMElements.addExpenseBtnHeader.addEventListener('click', openAddExpenseModal);
+
+        document.getElementById('expense-split-method').addEventListener('change', updateSplitDetails);
+        document.getElementById('expense-amount').addEventListener('input', updateSplitDetails);
+
+        function updateSplitDetails() {
+            const method = document.getElementById('expense-split-method').value;
+            const container = document.getElementById('split-details-container');
+            
+            container.innerHTML = '<p class="text-sm font-medium text-gray-700 mb-2">Split between:</p>';
+            
+            const participantsWrapper = document.createElement('div');
+            participantsWrapper.className = 'grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-2';
+            
+            state.friends.forEach(friend => {
+                const div = document.createElement('div');
+                div.className = 'flex items-center';
+                const checkboxId = `split-friend-${friend.id}`;
+                div.innerHTML = `
+                    <input type="checkbox" id="${checkboxId}" data-friend-id="${friend.id}" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 participant-checkbox" checked>
+                    <label for="${checkboxId}" class="ml-2 block text-sm text-gray-900">${friend.name}</label>
+                `;
+                participantsWrapper.appendChild(div);
+            });
+            container.appendChild(participantsWrapper);
+
+            const detailsWrapper = document.createElement('div');
+            detailsWrapper.id = 'split-inputs-wrapper';
+            detailsWrapper.className = 'mt-4 space-y-2';
+
+            if (method !== 'equally') {
+                container.appendChild(detailsWrapper);
+            }
+            
+            // Re-attach listener after wiping innerHTML
+            container.querySelectorAll('.participant-checkbox').forEach(cb => {
+                cb.addEventListener('change', populateSplitInputs);
+            });
+
+            populateSplitInputs();
+        }
+
+        function populateSplitInputs() {
+            const method = document.getElementById('expense-split-method').value;
+            if(method === 'equally') {
+                const wrapper = document.getElementById('split-inputs-wrapper');
+                if(wrapper) wrapper.innerHTML = '';
+                return;
+            };
+
+            const wrapper = document.getElementById('split-inputs-wrapper');
+            wrapper.innerHTML = '';
+
+            const selectedFriendIds = Array.from(document.querySelectorAll('.participant-checkbox:checked')).map(cb => cb.dataset.friendId);
+            
+            selectedFriendIds.forEach(friendId => {
+                const friend = findFriend(friendId);
+                const div = document.createElement('div');
+                div.className = 'flex items-center justify-between';
+                
+                let inputHtml = '';
+                if(method === 'unequally') {
+                    inputHtml = `<div class="relative"><span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500">₹</span><input type="number" data-friend-id="${friendId}" class="split-input w-28 border-gray-300 rounded-md shadow-sm text-right pl-7" placeholder="0.00"></div>`;
+                } else if (method === 'percentages') {
+                     inputHtml = `<div class="relative"><input type="number" data-friend-id="${friendId}" class="split-input w-28 border-gray-300 rounded-md shadow-sm text-right pr-7" placeholder="0"><span class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500">%</span></div>`;
+                } else if (method === 'shares') {
+                    inputHtml = `<input type="number" data-friend-id="${friendId}" class="split-input w-28 border-gray-300 rounded-md shadow-sm text-right" placeholder="1"> share(s)`;
+                }
+
+                div.innerHTML = `<label class="text-sm text-gray-800">${friend.name}</label>${inputHtml}`;
+                wrapper.appendChild(div);
+            });
+            
+            if (method !== 'equally') {
+                const totalDiv = document.createElement('div');
+                totalDiv.className = 'flex items-center justify-between pt-2 border-t mt-2';
+                totalDiv.innerHTML = `<label class="text-sm font-semibold">Total:</label><span id="split-total" class="text-sm font-semibold text-gray-500"></span>`;
+                wrapper.appendChild(totalDiv);
+                
+                wrapper.querySelectorAll('.split-input').forEach(input => input.addEventListener('input', validateSplit));
+                validateSplit();
+            }
+        }
+        
+        function validateSplit() {
+            const method = document.getElementById('expense-split-method').value;
+            const totalAmount = parseFloat(document.getElementById('expense-amount').value) || 0;
+            const inputs = Array.from(document.querySelectorAll('.split-input'));
+            const totalEl = document.getElementById('split-total');
+            
+            if (!totalEl) return;
+
+            let currentTotal = 0;
+            if (method === 'shares') {
+                const totalShares = inputs.reduce((sum, input) => sum + (parseFloat(input.value) || 0), 0);
+                if (totalShares > 0) {
+                     currentTotal = totalAmount;
+                }
+                totalEl.textContent = `${totalShares} share(s)`;
+
+            } else {
+                 currentTotal = inputs.reduce((sum, input) => sum + (parseFloat(input.value) || 0), 0);
+                if (method === 'unequally') totalEl.textContent = `${formatCurrency(currentTotal)} of ${formatCurrency(totalAmount)}`;
+                if (method === 'percentages') totalEl.textContent = `${currentTotal.toFixed(2)}% of 100%`;
+            }
+
+            // Validation styling
+            let isValid = false;
+            if(method === 'unequally') isValid = Math.abs(currentTotal - totalAmount) < 0.005;
+            else if (method === 'percentages') isValid = Math.abs(currentTotal - 100) < 0.005;
+            else if (method === 'shares') isValid = inputs.reduce((sum, input) => sum + (parseFloat(input.value) || 0), 0) > 0;
+            
+            if(isValid) {
+                 totalEl.classList.remove('text-red-500');
+                 totalEl.classList.add('text-green-600');
+            } else {
+                 totalEl.classList.remove('text-green-600');
+                 totalEl.classList.add('text-red-500');
+            }
+            return isValid;
+        }
+
+        DOMElements.addExpenseForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const description = document.getElementById('expense-description').value.trim();
+            const amount = parseFloat(document.getElementById('expense-amount').value);
+            const paidBy = document.getElementById('expense-paid-by').value;
+            const method = document.getElementById('expense-split-method').value;
+            const checkedBoxes = document.querySelectorAll('.participant-checkbox:checked');
+            const participants = Array.from(checkedBoxes).map(cb => cb.dataset.friendId);
+            
+            if (!description || !amount || !paidBy || participants.length === 0) {
+                alert('Please fill out all fields and select participants.');
+                return;
+            }
+            
+            const split = [];
+            
+            if(method === 'equally') {
+                const share = amount / participants.length;
+                participants.forEach(id => split.push({ friendId: id, amount: share }));
+            } else if (method === 'unequally') {
+                if(!validateSplit()) {
+                    alert('The sum of unequal splits must match the total amount.');
+                    return;
+                }
+                 document.querySelectorAll('#split-inputs-wrapper .split-input').forEach(input => {
+                    if(participants.includes(input.dataset.friendId)) {
+                        split.push({ friendId: input.dataset.friendId, amount: parseFloat(input.value) || 0});
+                    }
+                 });
+            } else if (method === 'percentages') {
+                 if(!validateSplit()) {
+                    alert('The sum of percentages must be 100%.');
+                    return;
+                }
+                document.querySelectorAll('#split-inputs-wrapper .split-input').forEach(input => {
+                    if(participants.includes(input.dataset.friendId)) {
+                        const percentage = parseFloat(input.value) || 0;
+                        split.push({ friendId: input.dataset.friendId, amount: amount * (percentage/100)});
+                    }
+                 });
+            } else if (method === 'shares') {
+                if(!validateSplit()) {
+                    alert('There must be at least one share.');
+                    return;
+                }
+                const inputs = Array.from(document.querySelectorAll('#split-inputs-wrapper .split-input')).filter(i => participants.includes(i.dataset.friendId));
+                const totalShares = inputs.reduce((sum, input) => sum + (parseFloat(input.value) || 0), 0);
+                inputs.forEach(input => {
+                    const shares = parseFloat(input.value) || 0;
+                    split.push({ friendId: input.dataset.friendId, amount: (amount * shares) / totalShares });
+                });
+            }
+
+            const newExpense = {
+                id: crypto.randomUUID(),
+                description,
+                amount,
+                paidBy,
+                date: new Date().toISOString(),
+                participants,
+                split
+            };
+
+            state.expenses.push(newExpense);
+            saveData();
+            renderAll();
+            hideModal(DOMElements.addExpenseModal);
+        });
+
+        // Delete Expense
+        DOMElements.friendView.addEventListener('click', (e) => {
+            const deleteBtn = e.target.closest('.delete-expense-btn');
+            if (deleteBtn) {
+                const expenseId = deleteBtn.dataset.expenseId;
+                showConfirmModal({
+                    title: "Delete Expense?",
+                    text: "This will permanently remove this expense. This action cannot be undone.",
+                    confirmText: "Delete",
+                    iconClass: "fas fa-trash-alt text-4xl text-red-500 mb-4",
+                    onConfirm: () => {
+                        state.expenses = state.expenses.filter(ex => ex.id !== expenseId);
+                        saveData();
+                        renderCurrentView();
+                    }
+                });
+            }
+        });
+
+        // Settle Up
+        function openSettleUpModal() {
+            DOMElements.settleUpForm.reset();
+            const fromSelect = document.getElementById('settle-from');
+            const toSelect = document.getElementById('settle-to');
+            fromSelect.innerHTML = '';
+            toSelect.innerHTML = '';
+            
+            state.friends.forEach(f => {
+                fromSelect.add(new Option(f.name, f.id));
+                toSelect.add(new Option(f.name, f.id));
+            });
+
+            showModal(DOMElements.settleUpModal);
+        }
+
+        DOMElements.settleUpForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const fromId = document.getElementById('settle-from').value;
+            const toId = document.getElementById('settle-to').value;
+            const amount = parseFloat(document.getElementById('settle-amount').value);
+
+            if (fromId === toId || !amount) {
+                alert("Please select two different people and enter an amount.");
+                return;
+            }
+
+            const paymentExpense = {
+                id: crypto.randomUUID(),
+                description: `Payment from ${findFriend(fromId).name} to ${findFriend(toId).name}`,
+                amount: amount,
+                paidBy: fromId,
+                date: new Date().toISOString(),
+                participants: [fromId, toId],
+                split: [{ friendId: toId, amount: amount }]
+            };
+
+            state.expenses.push(paymentExpense);
+            saveData();
+            renderAll();
+            hideModal(DOMElements.settleUpModal);
+        });
+        
+        // Data Export/Import
+        DOMElements.exportBtn.addEventListener('click', () => {
+            const dataStr = JSON.stringify(state, null, 2);
+            const dataBlob = new Blob([dataStr], {type: "application/json"});
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `splitz_backup_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        });
+
+        DOMElements.importBtn.addEventListener('click', () => {
+            DOMElements.importFileInput.click();
+        });
+
+        DOMElements.importFileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const importedState = JSON.parse(event.target.result);
+                    // Basic validation
+                    if (importedState.friends && importedState.expenses) {
+                         showConfirmModal({
+                            title: "Import Data?",
+                            text: "This will overwrite all your current data. Are you sure you want to proceed?",
+                            confirmText: "Import",
+                            iconClass: "fas fa-file-import text-4xl text-indigo-500 mb-4",
+                            onConfirm: () => {
+                                state = importedState;
+                                // a quick check to ensure 'You' exists
+                                if (!state.friends.some(f => f.isYou)) {
+                                    state.friends.unshift({ id: crypto.randomUUID(), name: 'You', isYou: true });
+                                }
+                                saveData();
+                                renderAll();
+                            }
+                        });
+                    } else {
+                        alert("Invalid data file format.");
+                    }
+                } catch (error) {
+                    alert("Error reading file. Please make sure it's a valid JSON backup file.");
+                    console.error("Import error:", error);
+                } finally {
+                    // Reset file input to allow importing same file again
+                    e.target.value = '';
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        // Responsive Sidebar
+        DOMElements.menuToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            DOMElements.sidebar.classList.toggle('-translate-x-full');
+        });
+
+        DOMElements.app.addEventListener('click', (e) => {
+             if (window.innerWidth < 768 && !DOMElements.sidebar.contains(e.target)) {
+                DOMElements.sidebar.classList.add('-translate-x-full');
+             }
+        })
+        
+        // --- INITIALIZATION ---
+        function init() {
+            loadData();
+            renderAll();
+        }
+
+        init();
+    });
+    </script>
+</body>
+</html>
