@@ -410,29 +410,52 @@
             }
 
             relevantExpenses.sort((a,b) => new Date(b.date) - new Date(a.date)).forEach(expense => {
-                const expenseEl = createExpenseElement(expense, youId);
+                // Pass the viewed friend's ID to the rendering function
+                const expenseEl = createExpenseElement(expense, youId, friendId);
                 DOMElements.expenseListContainer.appendChild(expenseEl);
             });
         }
 
-        function createExpenseElement(expense, currentUserId) {
+        function createExpenseElement(expense, currentUserId, viewedFriendId) {
             const el = document.createElement('div');
             el.className = 'bg-white p-4 rounded-lg shadow-sm mb-3 flex items-start';
             
             const paidByFriend = findFriend(expense.paidBy);
-            const userShare = expense.split.find(s => s.friendId === currentUserId)?.amount || 0;
             let shareText = '';
             
             const payerName = paidByFriend ? paidByFriend.name : 'A deleted user';
+            const isPayment = expense.description.startsWith('Payment from');
 
-            if (expense.paidBy === currentUserId) {
-                const lentAmount = expense.amount - userShare;
-                shareText = `<span class="text-green-600 font-semibold">You lent ${formatCurrency(lentAmount)}</span>`;
-            } else {
-                if (userShare > 0) {
-                    shareText = `<span class="text-red-600 font-semibold">You borrowed ${formatCurrency(userShare)}</span>`;
+            if (isPayment) {
+                if (expense.paidBy === currentUserId) {
+                    const toFriend = findFriend(viewedFriendId);
+                    const toName = toFriend ? toFriend.name : 'someone';
+                    shareText = `<span class="text-gray-700 font-semibold">You paid ${toName}</span>`;
                 } else {
-                    shareText = `<span class="text-gray-500">Not involved in split</span>`;
+                    shareText = `<span class="text-gray-700 font-semibold">${payerName} paid you</span>`;
+                }
+            } else {
+                const userShare = expense.split.find(s => s.friendId === currentUserId)?.amount || 0;
+                const friendShare = expense.split.find(s => s.friendId === viewedFriendId)?.amount || 0;
+                
+                if (expense.paidBy === currentUserId) { // You paid
+                    if (friendShare > 0) {
+                        shareText = `<span class="text-green-600 font-semibold">You lent ${formatCurrency(friendShare)}</span>`;
+                    } else {
+                        shareText = `<span class="text-gray-500">Friend not in this split</span>`;
+                    }
+                } else if (expense.paidBy === viewedFriendId) { // Friend paid
+                    if (userShare > 0) {
+                        shareText = `<span class="text-red-600 font-semibold">You borrowed ${formatCurrency(userShare)}</span>`;
+                    } else {
+                        shareText = `<span class="text-gray-500">You were not in this split</span>`;
+                    }
+                } else { // Someone else paid
+                    if (userShare > 0) {
+                        shareText = `<span class="text-gray-500">Your share was ${formatCurrency(userShare)}</span>`;
+                    } else {
+                        shareText = `<span class="text-gray-500">Not involved in this split</span>`;
+                    }
                 }
             }
             
@@ -452,6 +475,7 @@
             `;
             return el;
         }
+
 
         function renderOverallBalanceCards(balances) {
             DOMElements.overallBalances.innerHTML = '';
@@ -607,21 +631,27 @@
             const paidBy = document.getElementById('qa-paid-by').value;
             
             const checkedBoxes = document.querySelectorAll('#qa-participants-list .participant-checkbox:checked');
-            const participants = Array.from(checkedBoxes).map(cb => cb.dataset.friendId);
+            // This is the list of people the cost is split between
+            const splitWithIds = Array.from(checkedBoxes).map(cb => cb.dataset.friendId);
             
-            if (!description || !amount || !paidBy || participants.length === 0) {
+            if (!description || !amount || !paidBy || splitWithIds.length === 0) {
                 alert('Please fill out all fields and select at least one person to split with.');
                 return;
             }
 
-            const share = amount / participants.length;
-            const split = participants.map(id => ({ friendId: id, amount: share }));
+            // FIXED: Ensure the payer is always part of the transaction's participant list
+            const participantIdsSet = new Set(splitWithIds);
+            participantIdsSet.add(paidBy);
+            const participants = Array.from(participantIdsSet);
+
+            const share = amount / splitWithIds.length;
+            const split = splitWithIds.map(id => ({ friendId: id, amount: share }));
 
             const newExpense = {
                 id: crypto.randomUUID(),
                 description, amount, paidBy,
                 date: new Date().toISOString(),
-                participants,
+                participants, // Use the corrected full list of participants
                 split
             };
 
